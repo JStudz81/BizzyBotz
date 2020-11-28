@@ -9,6 +9,7 @@ from pygame.locals import *
 # Initialize pygame
 from Bed import Bed
 from Food import Food
+from GrassGenerator import GrassGenerator
 from Lifeform import Lifeform
 from Scrap import Scrap
 
@@ -38,6 +39,7 @@ lifeforms = []
 
 enemies_group = pygame.sprite.Group()
 scraps = pygame.sprite.Group()
+grass_gens = pygame.sprite.Group()
 
 enemies = []
 
@@ -59,7 +61,7 @@ while running:
     for event in pygame.event.get():
         if event.type == MOUSEBUTTONDOWN:
             mouse_click = pygame.mouse.get_pressed(3)
-            if mouse_click and scrap_amount > 0:
+            if mouse_click[0] and scrap_amount > 0:
                 pos = pygame.mouse.get_pos()
                 new_life = Lifeform()
                 new_life.rect.x = pos[0]
@@ -67,6 +69,11 @@ while running:
                 lifeforms.append(new_life)
                 lifeforms_group.add(new_life)
                 scrap_amount = scrap_amount - 1
+            if mouse_click[2] and scrap_amount >= 5:
+                pos = pygame.mouse.get_pos()
+                grass_gen = GrassGenerator(pos[0], pos[1])
+                grass_gens.add(grass_gen)
+                scrap_amount = scrap_amount - 5
         # Did the user hit a key?
         elif event.type == KEYDOWN:
             # Was it the Escape key? If so, stop the loop.
@@ -85,8 +92,27 @@ while running:
 
     screen.fill((0, 0, 0))
 
+
+    for g in grass_gens:
+        g.update(screen)
+        if g.progress >= 100:
+            g.progress = 0
+            new_life = Lifeform()
+            new_life.rect.x = g.rect.x
+            new_life.rect.y = g.rect.y
+            lifeforms.append(new_life)
+            lifeforms_group.add(new_life)
+    screen.blit(food.surf, food.rect)
+    screen.blit(bed.surf, bed.rect)
+    for scrap in scraps:
+        screen.blit(scrap.surf, scrap.rect)
+
+    font = pygame.font.SysFont(None, 24)
+    img = font.render('Scrap: ' + str(scrap_amount), True, (255, 255, 255))
+    screen.blit(img, (0, 0))
+
     dead = []
-    # Update the player sprite based on user keypresses
+    # Update the lifeforms
     for lifeform in lifeforms[:]:
         if len(enemies) > 0 and not lifeform.enemy:
             distances = []
@@ -101,6 +127,13 @@ while running:
             closest = scraps.sprites()[distances.index(min(distances))]
 
             lifeform.update(food, bed, nearest_scrap=closest)
+        elif len(grass_gens) > 0 and not lifeform.enemy:
+            distances = []
+            for g in grass_gens:
+                distances.append(math.hypot(g.rect.x - lifeform.rect.x, g.rect.y - lifeform.rect.y))
+            closest = grass_gens.sprites()[distances.index(min(distances))]
+
+            lifeform.update(food, bed, nearest_gen=closest)
         else:
             lifeform.update(food, bed)
 
@@ -120,6 +153,9 @@ while running:
                 scrap_pickup.kill()
                 scrap_amount = scrap_amount + 1
 
+            gen_touch = pygame.sprite.spritecollideany(lifeform, grass_gens)
+            if gen_touch is not None and lifeform.health < 100:
+                lifeform.health = lifeform.health + 1
 
         for enemy in enemies:
             if pygame.sprite.collide_rect(enemy, lifeform) and enemy is not lifeform and lifeform.enemy == False:
@@ -144,13 +180,7 @@ while running:
 
 
     # Draw the player on the screen
-    screen.blit(food.surf, food.rect)
-    screen.blit(bed.surf, bed.rect)
-    for scrap in scraps:
-        screen.blit(scrap.surf, scrap.rect)
-    font = pygame.font.SysFont(None, 24)
-    img = font.render('Scrap: ' + str(scrap_amount), True, (255,255,255))
-    screen.blit(img, (0, 0))
+
     pygame.display.flip()
 
     # Ensure program maintains a rate of 30 frames per second

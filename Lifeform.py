@@ -49,7 +49,7 @@ class Lifeform(pygame.sprite.Sprite):
 
             self.rect.move_ip(direction[0] * -5, direction[1] * -5)
 
-    def update(self, nearest_food: Food, nearest_bed: Bed, nearest_enemy=None, nearest_scrap=None):
+    def update(self, nearest_food: Food, nearest_bed: Bed, nearest_enemy=None, nearest_scrap=None, nearest_gen=None):
         if nearest_enemy is not None and self.attacking is None:
             self.attacking = nearest_enemy
             self.busy = True
@@ -62,6 +62,8 @@ class Lifeform(pygame.sprite.Sprite):
         if not self.busy and not self.enemy:
             if self.hunger > 50:
                 self.moveTo(nearest_food.rect.x, nearest_food.rect.y)
+            elif self.health < 75 and nearest_gen is not None:
+                self.moveTo(nearest_gen.rect.x, nearest_gen.rect.y)
             elif self.tired > 90:
                 self.moveTo(nearest_bed.rect.x, nearest_bed.rect.y)
             elif nearest_scrap is not None:
@@ -92,8 +94,6 @@ class Lifeform(pygame.sprite.Sprite):
             self.hunger = self.hunger + .1
         if self.hunger > 75:
             self.health = self.health - .1
-        if self.hunger < 25 and self.health < 100:
-            self.health = self.health + .1
         if self.tired < 100:
             self.tired = self.tired + .05
 
